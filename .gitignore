@@ -1,0 +1,9 @@
+# Secrets — never commit your keys
+.env
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+bookings.json
