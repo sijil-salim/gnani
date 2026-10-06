@@ -16,7 +16,7 @@ LiveKit plugin (`livekit-plugins-gnani`).
 
 The LLM is switched in `.env` with no code changes (see [Switching the LLM](#switching-the-llm)).
 
-📹 **Demo video:** _<add your video link here>_
+📹 **Demo video:** [Demo](https://drive.google.com/file/d/1DkijO3ExHD248SL06bezXeZPoErI3p4K/view?usp=sharing)
 
 ---
 
