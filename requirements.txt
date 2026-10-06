@@ -1,2 +1,2 @@
-livekit-agents[gnani,deepgram,openai,silero]~=1.6
+livekit-agents[gnani,openai,silero]~=1.6
 python-dotenv

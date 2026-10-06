@@ -1,21 +1,20 @@
-# Voice Booking Agent — LiveKit
+# Voice Booking Agent — LiveKit + Gnani
 
 A voice agent that handles one happy path end to end: **the caller states a date, the
 agent books the allotted slot for that date, and confirms it by voice.**
 
-Built with the [LiveKit Agents](https://docs.livekit.io/agents/) framework.
+Built with the [LiveKit Agents](https://docs.livekit.io/agents/) framework and Gnani's
+LiveKit plugin (`livekit-plugins-gnani`).
 
 **Providers in this build**
 
-| Component | Currently used | Switchable to |
-|---|---|---|
-| Speech-to-text (STT) | Deepgram | Gnani Prisma, via Gnani's LiveKit plugin (`livekit-plugins-gnani`) |
-| Text-to-speech (TTS) | Deepgram | Gnani Timbre, via the same plugin |
-| LLM | Groq (gpt-oss-120b) | Gnani Evon v3.3, or any OpenAI-compatible endpoint |
+| Component | Provider |
+|---|---|
+| Speech-to-text (STT) | Gnani Prisma v2.5 |
+| Text-to-speech (TTS) | Gnani Timbre v2.5 |
+| LLM | Groq (GPT-OSS 120B); switchable to Gnani Evon v3.3 or any OpenAI-compatible endpoint |
 
-Switching is done in `.env` with no code changes (see
-[Switching providers](#switching-providers)). The Gnani integration is already wired in
-`agent.py`; it only needs a Gnani API key.
+The LLM is switched in `.env` with no code changes (see [Switching the LLM](#switching-the-llm)).
 
 📹 **Demo video:** _<add your video link here>_
 
@@ -28,11 +27,11 @@ Switching is done in `.env` with no code changes (see
 **How one call flows (numbers match the diagram):**
 
 1. The caller speaks. Silero VAD (running locally) detects speech and when the caller has finished their turn.
-2. The STT plugin streams the audio to the speech provider and receives the text, e.g. *"Next Monday, please."*
+2. The Gnani STT plugin streams the audio to Gnani Prisma and receives the text, e.g. *"Next Monday, please."*
 3. The LLM understands the date (today's date is in its instructions, so relative dates like "next Monday" resolve correctly) and calls the `book_slot` tool with a `YYYY-MM-DD` date.
 4. `book_slot` asks the calendar store (`calendar_store.py`) to allot the first free slot on that date (from `slots.json`) and save it to `bookings.json`.
 5. The tool returns the result (date, slot, booking ID) to the LLM.
-6. The LLM writes a short spoken confirmation, which is sent to the TTS provider.
+6. The LLM writes a short spoken confirmation, which is sent to Gnani Timbre.
 7. The synthesized audio is played back to the caller.
 
 LiveKit's `AgentSession` orchestrates all of this: streaming audio to STT while the caller
@@ -74,9 +73,8 @@ speaks, turn-taking, tool calls, streaming TTS playback, and interruptions.
 
 | Key | Purpose | Where to get it |
 |---|---|---|
-| `DEEPGRAM_API_KEY` | STT + TTS (current) | console.deepgram.com |
-| `LLM_API_KEY` | LLM (Groq, current) | console.groq.com |
-| `GNANI_API_KEY` | Only if switching to Gnani STT + TTS | speechstack@gnani.ai |
+| `GNANI_API_KEY` | STT + TTS (Gnani Prisma + Timbre) | app.gnani.ai |
+| `LLM_API_KEY` | LLM (Groq as of now, switchable to Evon) | console.groq.com |
 
 No LiveKit account is needed for console mode.
 
@@ -99,7 +97,7 @@ pip install -r requirements.txt
 ```bash
 cp .env.example .env             # Windows: copy .env.example .env
 ```
-Open `.env` and fill in `DEEPGRAM_API_KEY` and `LLM_API_KEY`.
+Open `.env` and fill in `GNANI_API_KEY` and `LLM_API_KEY`.
 
 **4. Download the local VAD model (one time)**
 ```bash
@@ -151,17 +149,9 @@ python calendar_store.py clear 2026-10-12   # delete bookings for one date
 
 ---
 
-## Switching providers
+## Switching the LLM
 
-All providers are set in `.env`; no code changes are needed.
-
-**Speech (STT + TTS)**
-```
-SPEECH_PROVIDER=deepgram    # current
-SPEECH_PROVIDER=gnani       # Gnani Prisma (STT) + Gnani Timbre (TTS); also set GNANI_API_KEY
-```
-
-**LLM**: any OpenAI-compatible endpoint, set with three values:
+The LLM is any OpenAI-compatible endpoint, set in `.env` with three values:
 ```
 # Groq (current)
 LLM_BASE_URL=https://api.groq.com/openai/v1
@@ -172,6 +162,14 @@ LLM_MODEL=openai/gpt-oss-120b
 LLM_BASE_URL=http://<your-evon-server>:8000/v1
 LLM_API_KEY=not-needed
 LLM_MODEL=gnani-evon-v3.3
+```
+
+Gnani speech settings (model, voice, language) are also in `.env`:
+```
+GNANI_STT_LANGUAGE=en-IN
+GNANI_TTS_MODEL=timbre-v2.5
+GNANI_TTS_VOICE=Kaveri
+GNANI_TTS_LANGUAGE=en-IN
 ```
 
 ---
@@ -188,7 +186,7 @@ LLM_MODEL=gnani-evon-v3.3
   without code changes, and bookings are visible and survive restarts.
   `allot_and_book()` in `calendar_store.py` is the single place to swap in a real
   calendar or CRM API; the agent doesn't need to change.
-- **Providers are swappable through LiveKit's plugin slots**, configured in `.env`.
+- **Providers plug into LiveKit's STT, LLM and TTS slots** and are configured in `.env`.
 - **Replies are short, plain spoken text**, since everything the LLM writes is read aloud.
 
 ## Out of scope (by design)

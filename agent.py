@@ -1,12 +1,13 @@
 """
 Appointment-booking voice agent (happy path only), built on LiveKit Agents.
 
-Flow:  caller speaks a date  ->  STT  ->  LLM extracts the date and calls `book_slot`
-       ->  slot is allotted and saved  ->  LLM writes the confirmation  ->  TTS speaks it.
+Flow:  caller speaks a date  ->  Gnani Prisma (STT)  ->  LLM extracts the date and
+       calls `book_slot`  ->  slot is allotted and saved  ->  LLM writes the
+       confirmation  ->  Gnani Timbre (TTS) speaks it back.
 
-Providers are configured in .env:
-  - SPEECH_PROVIDER = deepgram (current) | gnani (Gnani Prisma STT + Timbre TTS)
-  - LLM_BASE_URL / LLM_API_KEY / LLM_MODEL = any OpenAI-compatible endpoint
+Configuration lives in .env:
+  - GNANI_* settings for speech (language, model, voice)
+  - LLM_BASE_URL / LLM_API_KEY / LLM_MODEL for any OpenAI-compatible LLM
     (currently Groq; can point to Gnani Evon)
 """
 
@@ -25,7 +26,7 @@ from livekit.agents import (
     function_tool,
 )
 # Plugins must be imported at the top of the file (LiveKit registers them on startup)
-from livekit.plugins import deepgram, gnani, openai, silero
+from livekit.plugins import gnani, openai, silero
 
 from calendar_store import allot_and_book
 
@@ -69,14 +70,9 @@ class BookingAgent(Agent):
 
 
 # ---------------------------------------------------------------------------
-# Speech providers — switch with SPEECH_PROVIDER in .env ("deepgram" or "gnani")
+# Speech — Gnani Prisma (STT) and Gnani Timbre (TTS), via Gnani's LiveKit plugin
 # ---------------------------------------------------------------------------
-SPEECH_PROVIDER = os.getenv("SPEECH_PROVIDER", "deepgram").lower()
-
-
 def build_stt():
-    if SPEECH_PROVIDER == "deepgram":
-        return deepgram.STT(model="nova-3", language="en")
     return gnani.STT(
         language=os.getenv("GNANI_STT_LANGUAGE", "en-IN"),
         sample_rate=16000,
@@ -84,11 +80,10 @@ def build_stt():
 
 
 def build_tts():
-    if SPEECH_PROVIDER == "deepgram":
-        return deepgram.TTS()
     return gnani.TTS(
-        voice=os.getenv("GNANI_TTS_VOICE", "Pranav"),
-        model=os.getenv("GNANI_TTS_MODEL", "timbre-v2.0"),
+        model=os.getenv("GNANI_TTS_MODEL", "timbre-v2.5"),
+        voice=os.getenv("GNANI_TTS_VOICE", "Kaveri"),
+        language=os.getenv("GNANI_TTS_LANGUAGE", "en-IN"),
         sample_rate=16000,
     )
 
@@ -110,7 +105,7 @@ def build_llm():
 # ---------------------------------------------------------------------------
 async def entrypoint(ctx: JobContext) -> None:
     await ctx.connect()
-    logger.info("Speech provider: %s | LLM: %s", SPEECH_PROVIDER, os.getenv("LLM_MODEL"))
+    logger.info("Speech: Gnani Prisma + Timbre | LLM: %s", os.getenv("LLM_MODEL"))
 
     session = AgentSession(
         stt=build_stt(),
