@@ -3,8 +3,6 @@
 A voice agent that handles one happy path end to end: **the caller states a date, the
 agent books the allotted slot for that date, and confirms it by voice.**
 
-![Architecture](./docs/architecture.png)
-
 Built with the [LiveKit Agents](https://docs.livekit.io/agents/) framework.
 
 **Providers in this build**
